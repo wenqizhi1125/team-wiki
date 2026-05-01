@@ -1,10 +1,12 @@
 namespace poly
 {
     #define vi vector<int>
-    #define siz(a) ((int) ((a).size()))
-    const int M = 1 << 21, mod = 998244353;
+    #define siz(a) ((int)((a).size()))
+    #define int ll
+    const int M = 1 << 21;
+    const int mod = 998244353; // 默认模数
     int len, r[M + 5], w[2][M + 5], L;
-    int qpow(int a, int b = mod - 2, int mod = 998244353)
+    int qpow(int a, int b, int mod)
     {
         int ans = 1;
         while(b)
@@ -15,15 +17,15 @@ namespace poly
         }
         return ans;
     }
-    const int inv2 = qpow(2);
+    const int inv2 = qpow(2, mod - 2, mod);
     int add(int x, int y){ return (x + y >= mod ? x + y - mod : x + y); }
     void init(int n)
     {
         len = 1;
         for(; len < n; len <<= 1);
         w[0][0] = w[1][0] = 1;
-        w[0][1] = qpow(3, (mod - 1) / len);
-        w[1][1] = qpow(w[0][1]);
+        w[0][1] = qpow(3, (mod - 1) / len, mod);
+        w[1][1] = qpow(w[0][1], mod - 2, mod);
         for(int i = 1; i < len; ++i)
         {
             r[i] = (r[i >> 1] >> 1) | (i & 1 ? (len >> 1) : 0);
@@ -49,7 +51,7 @@ namespace poly
         }
         if(o)
         {
-            const int inv = qpow(len);
+            const int inv = qpow(len, mod - 2, mod);
             for(int i = 0; i < len; ++i) f[i] = f[i] * inv % mod;
         }
     }
@@ -65,7 +67,7 @@ namespace poly
     }
     vi Inv(vi f)
     {
-        if(siz(f) == 1) return {qpow(f[0])};
+        if(siz(f) == 1) return {qpow(f[0], mod - 2, mod)};
         const int n = siz(f);
         vi g = f;
         g.resize((n + 1) / 2), g = Inv(g);
@@ -81,15 +83,42 @@ namespace poly
         for(int i = 0; i < n - 1; ++i) g[i] = (i + 1) * f[i + 1] % mod;
         f = Inv(f) * g;
         f.resize(n);
-        for(int i = n - 1; i >= 1; --i) f[i] = f[i - 1] * qpow(i) % mod;
+        for(int i = n - 1; i >= 1; --i) f[i] = f[i - 1] * qpow(i, mod - 2, mod) % mod;
         f[0] = 0;
         return f;
     }
 
+    mt19937 rng(chrono::steady_clock::now().time_since_epoch().count());
+    int rnd(int l, int r){ return uniform_int_distribution<int>(l, r)(rng); }
+    #define fi first
+    #define se second
+    #define pii pair<int, int>
+    // 二次剩余，需要保证mod是奇素数且n是二次剩余，返回较小值
     int sqrt(int n)
     {
-
-        return 1;
+        if(n == 0) return 0;
+        if(n == 1) return 1;
+        if(qpow(n, (mod - 1) / 2, mod) == mod - 1) return -1; // 表示n不是二次剩余
+        int a;
+        while(1)
+        {
+            a = rnd(1, mod - 1);
+            if(qpow((a * a - n + mod) % mod, (mod - 1) / 2, mod) == mod - 1) break;
+        }
+        pii W = pii(a, 1), ans = pii(1, 0);
+        int m = (mod + 1) / 2, t = (a * a - n + mod) % mod;
+        while(m)
+        {
+            if(m & 1)
+            {
+                ans = pii((ans.fi * W.fi % mod + ans.se * W.se % mod * t % mod) % mod, 
+                    (ans.fi * W.se + ans.se * W.fi ) % mod);
+            }
+            m >>= 1;
+            W = pii((W.fi * W.fi + W.se * W.se % mod * t) % mod, (W.fi * W.se * 2) % mod);
+        }
+        assert(ans.se == 0);
+        return min(ans.fi , (mod - ans.fi ) % mod);
     }
 
     vi sqrt(vi f)
@@ -106,33 +135,6 @@ namespace poly
         for(int i = 0; i < n; ++i) g[i] = add(g[i], f[i]) * inv2 % mod;
         return g;
     }
-
-    // void solveExp(vi &f, vi &g, int l, int r)
-    // {
-    //     if(l == r) return ;
-    //     int mid = (l + r) >> 1;
-    //     solveExp(f, g, l, mid);
-    //     init(r - l + 1 + mid - l + 1);
-    //     vi n(mid - l + 1), m(r - l + 1);
-    //     for(int i = 0; i < siz(n); ++i) n[i] = g[i + l];
-    //     for(int i = 0; i < siz(m); ++i) m[i] = f[i];
-    //     NTT(n, 0), NTT(m, 0);
-    //     for(int i = 0; i < len; ++i) n[i] = n[i] * m[i] % mod;
-    //     NTT(n, 1);
-    //     for(int i = mid; i < r; ++i) g[i + 1] = (g[i + 1] + n[i - l] * qpow(i + 1)) % mod;
-    //     solveExp(f, g, mid + 1, r);
-    // }
-
-    // vi Exp(vi f)
-    // {
-    //     const int n = siz(f);
-    //     for(int i = 0; i < n - 1; ++i) f[i] = f[i + 1] * (i + 1) % mod;
-    //     f[n - 1] = 0;
-    //     vi g(n);
-    //     g[0] = 1;
-    //     solveExp(f, g, 0, siz(f) - 1);
-    //     return g;
-    // }
     
     vi operator * (vi f, int m)
     {
@@ -198,11 +200,11 @@ namespace poly
         for(int i = 0; i < n - j; ++i) f[i] = f[i + j];
         f.resize(n - j);
         const int p = f[0];
-        for(int i = 0; i < n - j; ++i) f[i] = f[i] * qpow(p) % mod;
+        for(int i = 0; i < n - j; ++i) f[i] = f[i] * qpow(p, mod - 2, mod) % mod;
         f = Ln(f);
         for(int i = 0; i < n - j; ++i) f[i] = f[i] * k1 % mod;
         f = Exp(f, siz(f));
-        for(int i = 0; i < n - j; ++i) f[i] = f[i] * qpow(p, k2) % mod;
+        for(int i = 0; i < n - j; ++i) f[i] = f[i] * qpow(p, k2, mod) % mod;
         f.resize(n);
         for(int i = n - 1; i >= j * k3; --i) f[i] = f[i - j * k3];
         for(int i = 0; i < j * k3; ++i) f[i] = 0;
@@ -219,6 +221,14 @@ namespace poly
         res.resize(n - m + 1);
         reverse(res.begin(), res.end());
         return res;
+    }
+
+    vi operator % (vi f, vi g)
+    {
+        vi res = f / g;
+        vi ans = f - g * res;
+        ans.resize(siz(g) - 1);
+        return ans;
     }
 }
 using namespace poly;
